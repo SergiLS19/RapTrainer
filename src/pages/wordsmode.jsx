@@ -20,6 +20,7 @@ const WordsMode = () => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [sessionTime, setSessionTime] = useState(0);
   const [beatPlayerRef, setBeatPlayerRef] = useState(null);
+  const [warmupTotal, setWarmupTotal] = useState(25);
 
   // Configuración
   const [config, setConfig] = useState({
@@ -42,20 +43,27 @@ const WordsMode = () => {
   // ========== CONTROL DE SESIÓN ==========
 
   const startSession = () => {
+    // Limpiar cualquier estado previo
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+      resetTimeoutRef.current = null;
+    }
+    
+    // Resetear flags importantes
+    sessionActiveRef.current = false;
+    warmupStartedRef.current = false;
+    
     // Obtener beat aleatorio e iniciarlo
     const beat = getRandomBeat(config.beatCategory);
     setCurrentBeat(beat);
-    
-    // Resetear flag para permitir que el warmup inicie cuando el beat esté listo
-    warmupStartedRef.current = false;
   };
 
   const startWarmup = (beat) => {
-    // Usar el warmupTime del beat (tiempo hasta que revienta el compás)
-    const beatWarmupTime = beat.warmupTime || 25; // Default 25 si no está definido
+    const beatWarmupTime = beat.warmupTime || 25;
     setShowWarmup(true);
     setWarmupTime(beatWarmupTime);
-    
+    setWarmupTotal(beatWarmupTime);
+
     warmupRef.current = setInterval(() => {
       setWarmupTime(prev => {
         if (prev <= 1) {
@@ -72,6 +80,12 @@ const WordsMode = () => {
   };
 
   const initializeSession = () => {
+    // Limpiar cualquier timer anterior por seguridad
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
     // Generar palabras
     const generatedWords = getRandomWords(config.wordCount);
     setWords(generatedWords);
@@ -85,11 +99,21 @@ const WordsMode = () => {
     setSessionTime(0);
     setTimeRemaining(config.interval);
 
+    // Capturar la longitud de las palabras generadas en una variable local
+    const totalWords = generatedWords.length;
+    
     // Timer unificado que maneja todo cada segundo
     let wordTimeLeft = config.interval;
     let currentIndex = 0;
     
     timerRef.current = setInterval(() => {
+      // Verificar que la sesión sigue activa
+      if (!sessionActiveRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        return;
+      }
+      
       setSessionTime(prev => prev + 1);
       wordTimeLeft -= 1;
       setTimeRemaining(wordTimeLeft);
@@ -99,7 +123,7 @@ const WordsMode = () => {
         const nextIndex = currentIndex + 1;
         
         // Si era la última palabra, terminar sesión
-        if (nextIndex >= wordsRef.current.length) {
+        if (nextIndex >= totalWords) {
           clearInterval(timerRef.current);
           timerRef.current = null;
           endSession();
@@ -140,12 +164,18 @@ const WordsMode = () => {
     // Mostrar modal de "tiempo"
     setShowTimeUp(true);
     
-    // Después de 3 segundos, limpiar beat y resetear
+    // Después de 3 segundos, limpiar beat y resetear completamente
     resetTimeoutRef.current = setTimeout(() => {
       setShowTimeUp(false);
       setCurrentBeat(null);
       setBeatReady(false);
-      warmupStartedRef.current = false;
+      warmupStartedRef.current = false; // Resetear flag para permitir nuevo warmup
+      // Limpiar palabras para forzar nuevo estado
+      setWords([]);
+      wordsRef.current = [];
+      setCurrentWordIndex(0);
+      setSessionTime(0);
+      setTimeRemaining(0);
     }, 3000);
   };
 
@@ -236,6 +266,7 @@ const WordsMode = () => {
     setShowCountdown(false);
     setShowTimeUp(false);
     setWarmupTime(25);
+    setWarmupTotal(25);
     setCountdown(5);
     warmupStartedRef.current = false;
     sessionActiveRef.current = false;
@@ -261,11 +292,11 @@ const WordsMode = () => {
 
   const getWarmupPhrase = (time) => {
     if (time > 20) return "¿Estás listo?";
-    if (time > 15) return "Prepara tu flow";
+    if (time > 15) return "Preparate...";
     if (time > 10) return "La primera se baila...";
-    if (time > 5) return "Afloja la voz";
-    if (time === 5) return "Y se la damos";
-    if (time > 0) return null; // Para mostrar solo el número
+    if (time > 5) return "¡Dicelo!";
+    if (time > 3) return "Y se la damos";
+    if (time > 0) return null;
     return "Aquí vamos...";
   };
 
@@ -274,6 +305,11 @@ const WordsMode = () => {
   // Determinar si el beat debe estar visible
   const showBeatPlayer = currentBeat;
 
+  // Calcular progreso del warmup (0 a 1)
+  const warmupProgress = warmupTotal > 0 ? 1 - (warmupTime / warmupTotal) : 0;
+  const circumference = 2 * Math.PI * 90; // radio = 90
+  const strokeDashoffset = circumference * (1 - warmupProgress);
+
   return (
     <div className="words-mode">
       <div className="container">
@@ -281,22 +317,73 @@ const WordsMode = () => {
         <div className="mode-header">
           <h1>Palabras Aleatorias</h1>
           <p className="mode-description">
-            Entrena tu improvisación con palabras aleatorias. 
+            Entrena tu improvisación con palabras aleatorias.
             Cada {config.interval} segundos recibirás una nueva palabra para rimar.
           </p>
         </div>
 
         {/* Modal de Calentamiento */}
         {showWarmup && (
-          <div className="countdown-modal">
-            <div className="countdown-content">
+          <div className="countdown-modal warmup-modal-animated">
+            {/* Fondo con partículas animadas */}
+            <div className="warmup-bg-particles">
+              {[...Array(12)].map((_, i) => (
+                <div key={i} className="warmup-particle" style={{ '--i': i }} />
+              ))}
+            </div>
+
+            <div className="countdown-content warmup-content-animated">
               {warmupTime > 3 ? (
                 <>
-                  <h2>{getWarmupPhrase(warmupTime)}</h2>
-                  <div className="warmup-timer">{warmupTime}s</div>
+                  {/* Frase animada */}
+                  <h2 className="warmup-phrase" key={getWarmupPhrase(warmupTime)}>
+                    {getWarmupPhrase(warmupTime)}
+                  </h2>
+
+                  {/* Anillo de progreso circular */}
+                  <div className="warmup-ring-container">
+                    <svg className="warmup-ring" viewBox="0 0 200 200">
+                      <circle
+                        className="warmup-ring-bg"
+                        cx="100"
+                        cy="100"
+                        r="90"
+                        fill="none"
+                        strokeWidth="4"
+                      />
+                      <circle
+                        className="warmup-ring-progress"
+                        cx="100"
+                        cy="100"
+                        r="90"
+                        fill="none"
+                        strokeWidth="6"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={strokeDashoffset}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="warmup-ring-timer" key={warmupTime}>
+                      {warmupTime}
+                    </div>
+                  </div>
+
+                  {/* Barras de ecualizador */}
+                  <div className="warmup-equalizer">
+                    {[...Array(9)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="warmup-eq-bar"
+                        style={{ '--bar-i': i, '--bar-speed': `${0.4 + Math.random() * 0.5}s` }}
+                      />
+                    ))}
+                  </div>
                 </>
               ) : warmupTime > 0 ? (
-                <div className="countdown-number">{warmupTime}</div>
+                <div className="warmup-final-countdown">
+                  <div className="countdown-number" key={warmupTime}>{warmupTime}</div>
+                  <div className="countdown-ring-burst" key={`burst-${warmupTime}`} />
+                </div>
               ) : null}
             </div>
           </div>

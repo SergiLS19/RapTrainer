@@ -18,20 +18,20 @@ export const beatCategories = {
 const beats = {
   boombap: [
     {
-      youtubeId: 'W-0RJ0OyT-k',
-      title: 'TROYA',
-      producer: 'ZKRACH',
+      youtubeId: 'VwMcFjprFrA',
+      title: 'Dólar',
+      producer: 'AlcaZone',
       bpm: 85,
       category: 'boom bap',
-      warmupTime: 17 // Segundos hasta que revienta el compás
+      warmupTime: 21 // Segundos hasta que revienta el compás
     },
     {
-      youtubeId: 'J2TsBi6Y_rU',
-      title: 'GITANO',
-      producer: 'ZKRACH ',
+      youtubeId: 'bgxzDN4bW88',
+      title: 'Leyenda',
+      producer: 'AlcaZone',
       bpm: 88,
       category: 'boom bap',
-      warmupTime: 17 // Segundos hasta que revienta el compás
+      warmupTime: 16 // Segundos hasta que revienta el compás
     }
   ],
   trap: [

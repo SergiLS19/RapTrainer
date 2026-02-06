@@ -101,7 +101,7 @@
   border-radius: 4px;
   cursor: pointer;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   transition: height var(--transition-fast);
 }
 

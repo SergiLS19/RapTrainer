@@ -106,7 +106,7 @@ const BeatPlayer = ({ beat, autoplay = false, onEnd, onPlayerReady, onPause, onR
   };
 
   const handleSeek = (e) => {
-    if (!player) return;
+    if (!player || duration <= 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = x / rect.width;
@@ -189,9 +189,9 @@ const BeatPlayer = ({ beat, autoplay = false, onEnd, onPlayerReady, onPause, onR
       <div className="progress-container">
         <span className="time-label">{formatTime(currentTime)}</span>
         <div className="progress-bar" onClick={handleSeek}>
-          <div 
-            className="progress-fill" 
-            style={{ width: `${(currentTime / duration) * 100}%` }}
+          <div
+            className="progress-fill"
+            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
           >
             <div className="progress-thumb"></div>
           </div>
